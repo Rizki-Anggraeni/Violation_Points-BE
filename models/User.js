@@ -13,7 +13,8 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    default: 'guru'
+    enum: ['orang_tua', 'wali_kelas', 'guru_bk', 'admin', 'sekretaris'],
+    required: true
   },
   class_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -22,7 +23,7 @@ const userSchema = new mongoose.Schema({
   student_id: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student'
-  } // ID Siswa khusus untuk user dengan role 'ortu'
+  } // ID Siswa khusus untuk user dengan role 'orang_tua'
 }, {
   timestamps: true
 });

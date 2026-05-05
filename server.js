@@ -14,6 +14,9 @@ app.use(express.json());
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 
+const userRoutes = require('./routes/userRoutes');
+app.use('/api/users', userRoutes);
+
 // Data Baru Sesuai Kamus Data (Terproteksi)
 const classRoutes = require('./routes/classRoutes');
 app.use('/api/classes', classRoutes);

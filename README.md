@@ -56,6 +56,10 @@ Sebagian besar endpoint dilindungi oleh Middleware Autentikasi (`authMiddleware`
 - `POST /api/auth/register` - Mendaftarkan user baru (termasuk menghubungkan ID Kelas / ID Siswa).
 - `POST /api/auth/login` - Login dan mendapatkan Token JWT.
 
+### Manajemen Akun (`/api/users`)
+- `GET /api/users/staff` - Melihat daftar akun wali kelas dan sekretaris (Hanya Admin & Guru BK)
+- `PUT /api/users/:id/assign-class` - Menetapkan (assign) kelas tertentu ke akun wali kelas/sekretaris (One-to-One)
+
 ### Data Master Kelas (`/api/classes`)
 - `GET /api/classes` - Melihat daftar kelas
 - `POST /api/classes` - Menambahkan kelas baru

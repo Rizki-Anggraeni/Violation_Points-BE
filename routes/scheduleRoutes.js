@@ -8,7 +8,12 @@ router.use(authMiddleware);
 // GET: Ambil semua jadwal
 router.get('/', async (req, res) => {
     try {
-        const schedules = await Schedule.find().populate('class_id');
+        let query = {};
+        // Filter agar sekretaris dan wali kelas hanya mendapat jadwal kelasnya
+        if (req.user.role === 'sekretaris' || req.user.role === 'wali_kelas') {
+            query.class_id = req.user.class_id;
+        }
+        const schedules = await Schedule.find(query).populate('class_id');
         res.status(200).json(schedules);
     } catch (error) {
         res.status(500).json({ message: error.message });
