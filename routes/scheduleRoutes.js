@@ -11,6 +11,9 @@ router.get('/', async (req, res) => {
         let query = {};
         // Filter agar sekretaris dan wali kelas hanya mendapat jadwal kelasnya
         if (req.user.role === 'sekretaris' || req.user.role === 'wali_kelas') {
+            if (!req.user.class_id) {
+                return res.status(200).json([]); // Jika belum di-assign kelas, kembalikan kosong
+            }
             query.class_id = req.user.class_id;
         }
         const schedules = await Schedule.find(query).populate('class_id');

@@ -27,6 +27,9 @@ router.get('/', async (req, res) => {
         if (req.user.role === 'orang_tua') {
             query.student_id = req.user.student_id;
         } else if (req.user.role === 'wali_kelas' || req.user.role === 'sekretaris') {
+            if (!req.user.class_id) {
+                return res.status(200).json([]);
+            }
             // Wali kelas dan sekretaris hanya melihat pelanggaran siswa dari kelasnya
             const studentsInClass = await Student.find({ class_id: req.user.class_id }).select('_id');
             query.student_id = { $in: studentsInClass.map(s => s._id) };
@@ -90,11 +93,53 @@ router.post('/', async (req, res) => {
     }
 });
 
-// PUT: Update data riwayat (Hati-hati: poin siswa belum otomatis disesuaikan di logika dasar ini)
+// PUT: Update data riwayat (Dengan penyesuaian poin otomatis)
 router.put('/:id', async (req, res) => {
     try {
-        const updatedViolation = await Violation.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
-        if (!updatedViolation) return res.status(404).json({ message: 'Riwayat tidak ditemukan' });
+        const oldViolation = await Violation.findById(req.params.id).populate('rule_id');
+        if (!oldViolation) return res.status(404).json({ message: 'Riwayat tidak ditemukan' });
+
+        const { student_id, rule_id, date, description } = req.body;
+        
+        const oldRulePoints = oldViolation.rule_id ? oldViolation.rule_id.points : 0;
+        const oldStudentId = oldViolation.student_id ? oldViolation.student_id.toString() : null;
+
+        const newRuleId = rule_id || (oldViolation.rule_id ? oldViolation.rule_id._id.toString() : null);
+        const newStudentId = student_id || oldStudentId;
+
+        let newRulePoints = oldRulePoints;
+        if (rule_id && rule_id !== (oldViolation.rule_id ? oldViolation.rule_id._id.toString() : null)) {
+            const newRule = await ViolationRule.findById(rule_id);
+            if (newRule) newRulePoints = newRule.points;
+        }
+
+        if (oldStudentId && oldStudentId !== newStudentId) {
+            // Jika pindah siswa (Hapus poin dari siswa lama, tambah ke siswa baru)
+            const oldStudent = await Student.findById(oldStudentId);
+            if (oldStudent) {
+                oldStudent.total_points = Math.max(0, oldStudent.total_points - oldRulePoints);
+                await oldStudent.save();
+            }
+            if (newStudentId) {
+                const newStudentObj = await Student.findById(newStudentId);
+                if (newStudentObj) {
+                    newStudentObj.total_points = Math.max(0, newStudentObj.total_points + newRulePoints);
+                    await newStudentObj.save();
+                }
+            }
+        } else if (oldStudentId === newStudentId && oldStudentId) {
+            // Jika siswa sama, sesuaikan selisih poin aturan baru vs aturan lama
+            const diff = newRulePoints - oldRulePoints;
+            if (diff !== 0) {
+                const student = await Student.findById(oldStudentId);
+                if (student) {
+                    student.total_points = Math.max(0, student.total_points + diff);
+                    await student.save();
+                }
+            }
+        }
+
+        const updatedViolation = await Violation.findByIdAndUpdate(req.params.id, { student_id: newStudentId, rule_id: newRuleId, date, description }, { new: true, runValidators: true });
         res.status(200).json(updatedViolation);
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -104,8 +149,22 @@ router.put('/:id', async (req, res) => {
 // DELETE
 router.delete('/:id', async (req, res) => {
     try {
-        const deletedViolation = await Violation.findByIdAndDelete(req.params.id);
-        if (!deletedViolation) return res.status(404).json({ message: 'Riwayat tidak ditemukan' });
+        const violation = await Violation.findById(req.params.id).populate('rule_id');
+        if (!violation) return res.status(404).json({ message: 'Riwayat tidak ditemukan' });
+
+        const rulePoints = violation.rule_id ? violation.rule_id.points : 0;
+        const studentId = violation.student_id;
+
+        await Violation.findByIdAndDelete(req.params.id);
+
+        if (studentId && rulePoints > 0) {
+            const student = await Student.findById(studentId);
+            if (student) {
+                student.total_points = Math.max(0, student.total_points - rulePoints);
+                await student.save();
+            }
+        }
+
         res.status(200).json({ message: 'Riwayat berhasil dihapus' });
     } catch (error) {
         res.status(500).json({ message: error.message });

@@ -3,6 +3,8 @@ const router = express.Router();
 const Attendance = require('../models/Attendance');
 const Student = require('../models/Student');
 const Schedule = require('../models/Schedule');
+const Violation = require('../models/Violation');
+const ViolationRule = require('../models/ViolationRule');
 const authMiddleware = require('../models/authMiddleware');
 
 router.use(authMiddleware);
@@ -13,8 +15,11 @@ router.get('/', async (req, res) => {
         let query = {};
         if (req.user.role === 'orang_tua') {
             query.student_id = req.user.student_id;
-        } else if (req.user.role === 'wali_kelas') {
-            // Wali kelas hanya melihat presensi siswa dari kelasnya
+        } else if (req.user.role === 'wali_kelas' || req.user.role === 'sekretaris') {
+            if (!req.user.class_id) {
+                return res.status(200).json([]);
+            }
+            // Wali kelas & sekretaris hanya melihat presensi siswa dari kelasnya
             const studentsInClass = await Student.find({ class_id: req.user.class_id }).select('_id');
             query.student_id = { $in: studentsInClass.map(s => s._id) };
         }
@@ -55,6 +60,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
     try {
         const { student_id, schedule_id, date, status } = req.body;
+
+        // Blokir akses Guru BK dan Orang Tua
+        if (['guru_bk', 'orang_tua'].includes(req.user.role)) {
+            return res.status(403).json({ message: 'Akses ditolak. Anda tidak memiliki izin untuk menginput presensi.' });
+        }
 
         // --- LOGIKA OTORISASI WAKTU UNTUK SEKRETARIS ---
         if (req.user.role === 'sekretaris') {
@@ -103,6 +113,11 @@ router.put('/:id', async (req, res) => {
 
         if (!attendance) {
             return res.status(404).json({ message: 'Data presensi tidak ditemukan' });
+        }
+
+        // Blokir akses Guru BK dan Orang Tua
+        if (['guru_bk', 'orang_tua'].includes(req.user.role)) {
+            return res.status(403).json({ message: 'Akses ditolak. Anda tidak memiliki izin untuk mengubah presensi.' });
         }
 
         // --- LOGIKA OTORISASI UNTUK SEKRETARIS ---

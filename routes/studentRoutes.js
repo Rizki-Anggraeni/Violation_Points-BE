@@ -22,8 +22,11 @@ router.get('/', async (req, res) => {
         let query = {};
         if (req.user.role === 'orang_tua') {
             query._id = req.user.student_id;
-        } else if (req.user.role === 'wali_kelas') {
-            query.class_id = req.user.class_id; // Wali kelas hanya melihat siswa di kelasnya
+        } else if (req.user.role === 'wali_kelas' || req.user.role === 'sekretaris') {
+            if (!req.user.class_id) {
+                return res.status(200).json([]); // Cegah fetch data jika belum punya kelas
+            }
+            query.class_id = req.user.class_id;
         }
         const students = await Student.find(query).populate('class_id', 'name'); // Jika model Class sudah ada
         res.status(200).json(students);
