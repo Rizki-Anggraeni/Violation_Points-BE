@@ -1,4 +1,4 @@
-# 🏫 Backend - Sistem Pencatatan Poin Pelanggaran SMKN 1 Pringsurat
+# 🏫 Backend - Sistem Pencatatan Poin Pelanggaran
 
 Ini adalah RESTful API backend untuk Sistem Pencatatan Poin Pelanggaran Siswa, dibangun menggunakan **Node.js**, **Express.js**, dan **MongoDB**. Backend ini dilengkapi dengan sistem autentikasi berbasis **JWT** dan Otorisasi berbasis Peran (Role-Based Access Control).
 
