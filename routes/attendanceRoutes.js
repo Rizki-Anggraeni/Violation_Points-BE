@@ -75,14 +75,15 @@ router.post('/', async (req, res) => {
                 return res.status(403).json({ message: 'Akses ditolak. Anda hanya dapat mengisi presensi untuk kelas Anda sendiri.' });
             }
 
+            // Gunakan zona waktu Indonesia (WIB)
+            const wibTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
             const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-            const currentDay = days[new Date().getDay()];
+            const currentDay = days[wibTime.getDay()];
             if (schedule.day !== currentDay) {
                 return res.status(400).json({ message: 'Presensi hanya dapat diisi pada hari yang sesuai dengan jadwal.' });
             }
 
-            const now = new Date();
-            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const currentMinutes = wibTime.getHours() * 60 + wibTime.getMinutes();
             const [startH, startM] = schedule.start_time.split(':').map(Number);
             const [endH, endM] = schedule.end_time.split(':').map(Number);
             const scheduleStart = startH * 60 + startM;
@@ -134,14 +135,15 @@ router.put('/:id', async (req, res) => {
             // Cek batas waktu untuk update
             const schedule = await Schedule.findById(attendance.schedule_id._id);
             if (schedule) {
+                // Gunakan zona waktu Indonesia (WIB)
+                const wibTime = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" }));
                 const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
-                const currentDay = days[new Date().getDay()];
+                const currentDay = days[wibTime.getDay()];
                 if (schedule.day !== currentDay) {
                     return res.status(400).json({ message: 'Update presensi hanya dapat dilakukan pada hari yang sama dengan jadwal.' });
                 }
 
-                const now = new Date();
-                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                const currentMinutes = wibTime.getHours() * 60 + wibTime.getMinutes();
                 const [startH, startM] = schedule.start_time.split(':').map(Number);
                 const [endH, endM] = schedule.end_time.split(':').map(Number);
                 if (currentMinutes < (startH * 60 + startM) || currentMinutes > (endH * 60 + endM + 60)) {

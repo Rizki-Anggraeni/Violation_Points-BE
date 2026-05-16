@@ -1,7 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const Student = require('../models/Student');
+const User = require('../models/User');
 const authMiddleware = require('../models/authMiddleware');
+const mongoose = require('mongoose');
 
 // Semua endpoint di bawah ini wajib menggunakan token JWT
 router.use(authMiddleware);
@@ -20,13 +22,29 @@ router.use(checkModificationRole);
 router.get('/', async (req, res) => {
     try {
         let query = {};
-        if (req.user.role === 'orang_tua') {
-            query._id = req.user.student_id;
-        } else if (req.user.role === 'wali_kelas' || req.user.role === 'sekretaris') {
-            if (!req.user.class_id) {
+        
+        // Ambil data user terbaru langsung dari database (mengatasi token stale)
+        const dbUser = await User.findById(req.user.id || req.user._id);
+        const userRole = dbUser ? dbUser.role : req.user.role;
+        const studentId = dbUser ? dbUser.student_id : req.user.student_id;
+        const classId = dbUser ? dbUser.class_id : req.user.class_id;
+
+        if (userRole === 'orang_tua') {
+            if (!studentId) {
+                return res.status(200).json([]);
+            }
+            
+            if (!Array.isArray(studentId) && !mongoose.Types.ObjectId.isValid(studentId)) {
+                // Fallback: Jika admin mengisi student_id dengan format NIS
+                query.nis = studentId;
+            } else {
+                query._id = Array.isArray(studentId) ? { $in: studentId } : studentId;
+            }
+        } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
+            if (!classId) {
                 return res.status(200).json([]); // Cegah fetch data jika belum punya kelas
             }
-            query.class_id = req.user.class_id;
+            query.class_id = classId;
         }
         const students = await Student.find(query).populate('class_id', 'name'); // Jika model Class sudah ada
         res.status(200).json(students);
