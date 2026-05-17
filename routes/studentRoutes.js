@@ -34,11 +34,13 @@ router.get('/', async (req, res) => {
                 return res.status(200).json([]);
             }
             
-            if (!Array.isArray(studentId) && !mongoose.Types.ObjectId.isValid(studentId)) {
-                // Fallback: Jika admin mengisi student_id dengan format NIS
-                query.nis = studentId;
+            const isArray = Array.isArray(studentId);
+            const firstVal = isArray ? studentId[0] : studentId;
+            
+            if (firstVal && !mongoose.Types.ObjectId.isValid(firstVal)) {
+                query.nis = isArray ? { $in: studentId } : studentId;
             } else {
-                query._id = Array.isArray(studentId) ? { $in: studentId } : studentId;
+                query._id = isArray ? { $in: studentId } : studentId;
             }
         } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
             if (!classId) {

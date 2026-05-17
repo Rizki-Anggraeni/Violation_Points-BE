@@ -20,10 +20,11 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Class'
   }, // ID Kelas untuk user dengan role 'sekretaris'
-  student_id: {
+  student_id: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Student'
-  } // ID Siswa khusus untuk user dengan role 'orang_tua'
+    ref: 'Student',
+    default: []
+  }] // ID Siswa khusus untuk user dengan role 'orang_tua'
 }, {
   timestamps: true
 });

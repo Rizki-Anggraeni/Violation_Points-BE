@@ -38,15 +38,17 @@ router.get('/', async (req, res) => {
                 return res.status(200).json([]);
             }
 
-            let targetStudentId = studentId;
-            if (!Array.isArray(studentId) && !mongoose.Types.ObjectId.isValid(studentId)) {
-                // Jika admin mengisi dengan format NIS, cari _id aslinya dulu
-                const studentData = await Student.findOne({ nis: studentId }).select('_id');
-                if (!studentData) return res.status(200).json([]);
-                targetStudentId = studentData._id;
+            const isArray = Array.isArray(studentId);
+            const firstVal = isArray ? studentId[0] : studentId;
+            let targetIds = isArray ? studentId : [studentId];
+
+            if (firstVal && !mongoose.Types.ObjectId.isValid(firstVal)) {
+                const studentsData = await Student.find({ nis: { $in: targetIds } }).select('_id');
+                if (studentsData.length === 0) return res.status(200).json([]);
+                targetIds = studentsData.map(s => s._id);
             }
 
-            query.student_id = Array.isArray(targetStudentId) ? { $in: targetStudentId } : targetStudentId;
+            query.student_id = { $in: targetIds };
         } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
             if (!classId) {
                 return res.status(200).json([]);

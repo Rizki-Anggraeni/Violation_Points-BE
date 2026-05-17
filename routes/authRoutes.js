@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 // POST: Register User Baru
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, role } = req.body;
+        const { username, password, role, student_id, class_id } = req.body;
 
         // Cek apakah username sudah ada di database
         const existingUser = await User.findOne({ username });
@@ -15,12 +15,20 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ message: 'Username sudah digunakan' });
         }
 
-        const newUser = new User({ username, password, role });
+        // Format data yang akan disimpan
+        const userData = { username, password, role };
+        if (class_id) userData.class_id = class_id;
+        if (student_id) {
+            // Jadikan array apabila input yang masuk berupa string tunggal
+            userData.student_id = Array.isArray(student_id) ? student_id : [student_id];
+        }
+
+        const newUser = new User(userData);
         const savedUser = await newUser.save(); // Password otomatis dienkripsi oleh model User
 
         res.status(201).json({
             message: 'User berhasil didaftarkan',
-            user: { id: savedUser._id, username: savedUser.username, role: savedUser.role }
+            user: { id: savedUser._id, username: savedUser.username, role: savedUser.role, student_id: savedUser.student_id, class_id: savedUser.class_id }
         });
     } catch (error) {
         res.status(500).json({ message: error.message });

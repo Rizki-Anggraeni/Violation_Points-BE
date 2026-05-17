@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
+const Student = require('../models/Student');
 const authMiddleware = require('../models/authMiddleware');
 
 router.use(authMiddleware);
@@ -49,6 +50,40 @@ router.put('/:id/assign-class', assignGuard, async (req, res) => {
         await user.save();
 
         res.status(200).json({ message: 'Kelas berhasil di-assign', user: { id: user._id, username: user.username, role: user.role, class_id: user.class_id } });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT: Assign siswa ke akun orang_tua (Disempurnakan)
+router.put('/:id/assign-student', assignGuard, async (req, res) => {
+    try {
+        let { student_id } = req.body;
+        const user = await User.findById(req.params.id);
+        
+        if (!user) return res.status(404).json({ message: 'User tidak ditemukan' });
+        if (user.role !== 'orang_tua') return res.status(400).json({ message: 'Hanya bisa mengatur data siswa untuk akun dengan role orang_tua' });
+
+        if (student_id) {
+            const isArray = Array.isArray(student_id);
+            const firstVal = isArray ? student_id[0] : student_id;
+            
+            // Jika yang diinputkan adalah NIS (bukan ObjectId 24 karakter)
+            if (firstVal && !firstVal.match(/^[0-9a-fA-F]{24}$/)) {
+                const targetNis = isArray ? student_id : [student_id];
+                const students = await Student.find({ nis: { $in: targetNis } }).select('_id');
+                
+                if (students.length === 0) return res.status(404).json({ message: 'Siswa dengan NIS tersebut tidak ditemukan di database' });
+                student_id = students.map(s => s._id);
+            } else if (!isArray && student_id) {
+                student_id = [student_id];
+            }
+        }
+
+        user.student_id = student_id || [];
+        await user.save();
+
+        res.status(200).json({ message: 'Siswa berhasil dihubungkan', user: { id: user._id, username: user.username, student_id: user.student_id } });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
