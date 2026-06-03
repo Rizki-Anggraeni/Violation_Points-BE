@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require('../models/User');
 const Student = require('../models/Student');
 const authMiddleware = require('../models/authMiddleware');
+const bcrypt = require('bcryptjs');
 
 router.use(authMiddleware);
 
@@ -84,6 +85,33 @@ router.put('/:id/assign-student', assignGuard, async (req, res) => {
         await user.save();
 
         res.status(200).json({ message: 'Siswa berhasil dihubungkan', user: { id: user._id, username: user.username, student_id: user.student_id } });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT: Mengubah password pengguna yang sedang login
+router.put('/change-password', async (req, res) => {
+    try {
+        const { old_password, new_password } = req.body;
+        const userId = req.user.id || req.user._id;
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User tidak ditemukan' });
+        }
+
+        // Cek kecocokan password lama
+        const isMatch = await bcrypt.compare(old_password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: 'Password lama salah' });
+        }
+
+        // Ubah dengan password baru (otomatis terenkripsi lewat middleware User.js)
+        user.password = new_password;
+        await user.save();
+
+        res.status(200).json({ message: 'Password berhasil diubah' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
