@@ -25,12 +25,14 @@ Sebelum menjalankan project ini, pastikan Anda telah menginstal:
    ```bash
    npm install
    ```
+   *(Pastikan package `cors` sudah terinstal agar frontend dapat melakukan request API ke backend)*
 
 3. Buat file `.env` di *root* direktori `backend` dan sesuaikan dengan kredensial Anda:
    ```env
    PORT=3000
    MONGODB_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<nama_database>?retryWrites=true&w=majority
    JWT_SECRET=rahasia_sistem_poin_pelanggaran_super_aman
+   FRONTEND_URL=http://localhost:3000
    ```
 
 4. Jalankan server:
@@ -90,5 +92,14 @@ Sebagian besar endpoint dilindungi oleh Middleware Autentikasi (`authMiddleware`
 - `GET /api/violations` - Melihat riwayat pelanggaran yang pernah terjadi (Difilter otomatis jika role = ortu)
 - `POST /api/violations` - Mencatat pelanggaran baru yang dilakukan siswa (Otomatis menambah `total_points` siswa)
 - `PUT` / `DELETE /api/violations/:id` - Modifikasi data pelanggaran (Dilarang untuk Wali Kelas)
+
+## 🌐 Catatan Integrasi dengan Frontend (CORS)
+Karena aplikasi Frontend (Next.js) dan Backend (Express.js) seringkali berjalan di domain atau port yang berbeda saat masa *development* maupun *production*, pastikan Backend telah mengaktifkan kebijakan **CORS**.
+
+Contoh implementasi di file `server.js` atau `app.js` backend Anda:
+```javascript
+const cors = require('cors');
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3001', credentials: true }));
+```
 
 ---
