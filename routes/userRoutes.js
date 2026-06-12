@@ -90,6 +90,44 @@ router.put('/:id/assign-student', assignGuard, async (req, res) => {
     }
 });
 
+// POST: Bulk assign banyak siswa ke banyak orang tua via JSON
+router.post('/bulk-assign-student', assignGuard, async (req, res) => {
+    try {
+        const assignments = req.body;
+
+        // Pastikan data yang dikirim berupa Array JSON
+        if (!Array.isArray(assignments)) {
+            return res.status(400).json({ message: 'Data request harus berupa Array JSON.' });
+        }
+
+        let results = [];
+        for (let item of assignments) {
+            const { username_ortu, student_nis } = item;
+            
+            const user = await User.findOne({ username: username_ortu, role: 'orang_tua' });
+            if (!user) {
+                results.push({ username_ortu, status: 'Gagal - Akun orang tua tidak ditemukan' });
+                continue;
+            }
+
+            // Mengambil ID MongoDB siswa berdasarkan array NIS
+            const students = await Student.find({ nis: { $in: student_nis } }).select('_id');
+            if (students.length === 0) {
+                results.push({ username_ortu, status: 'Gagal - NIS siswa tidak ditemukan di database' });
+                continue;
+            }
+
+            user.student_id = students.map(s => s._id);
+            await user.save();
+            results.push({ username_ortu, status: 'Berhasil', jumlah_anak: students.length });
+        }
+
+        res.status(200).json({ message: 'Proses bulk assign selesai', results });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // PUT: Mengubah password pengguna yang sedang login
 router.put('/change-password', async (req, res) => {
     try {
