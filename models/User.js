@@ -24,9 +24,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student',
     default: []
-  }] // ID Siswa khusus untuk user dengan role 'orang_tua'
+  }], // ID Siswa khusus untuk user dengan role 'orang_tua'
+  fcmToken: { type: String, default: null }
 }, {
-  timestamps: true
+  timestamps: true,
 });
 
 // Middleware Mongoose untuk enkripsi password sebelum disimpan

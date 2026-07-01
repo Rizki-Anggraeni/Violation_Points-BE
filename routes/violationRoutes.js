@@ -6,6 +6,7 @@ const Student = require('../models/Student');
 const User = require('../models/User');
 const authMiddleware = require('../models/authMiddleware');
 const mongoose = require('mongoose');
+const { getMessaging } = require('firebase-admin/messaging');
 
 router.use(authMiddleware);
 
@@ -110,6 +111,30 @@ router.post('/', async (req, res) => {
         const violation = new Violation({ student_id, rule_id, date, description, reported_by: req.user.id });
         const savedViolation = await violation.save();
 
+        // --- TRIGGER FCM NOTIFICATION ---
+        try {
+            // 1. Cari akun orang tua yang terhubung dengan siswa ini
+            const parentUser = await User.findOne({ student_id: student._id, role: 'orang_tua' });
+
+            // 2. Jika akun orang tua ditemukan dan memiliki fcmToken
+            if (parentUser && parentUser.fcmToken) {
+                // 3. Buat payload notifikasi
+                const message = {
+                    notification: {
+                        title: 'Peringatan Pelanggaran Siswa',
+                        body: `${student.name} telah melakukan pelanggaran: ${rule.violation_name}.`
+                    },
+                    token: parentUser.fcmToken
+                };
+
+                // 4. Kirim notifikasi
+                await getMessaging().send(message);
+                console.log('Notifikasi FCM berhasil dikirim ke:', parentUser.username);
+            }
+        } catch (fcmError) {
+            console.error('Gagal mengirim notifikasi FCM:', fcmError);
+        }
+
         res.status(201).json({ message: 'Pelanggaran dicatat', violation: savedViolation, total_points: student.total_points });
     } catch (error) {
         res.status(400).json({ message: error.message });
@@ -173,10 +198,10 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
     try {
         const violation = await Violation.findById(req.params.id).populate('rule_id');
-        if (!violation) return res.status(404).json({ message: 'Riwayat tidak ditemukan' });
+        if (!violation) return res.status(404).json({ message: 'Riwayat pelanggaran tidak ditemukan' });
 
         const rulePoints = violation.rule_id ? violation.rule_id.points : 0;
-        const studentId = violation.student_id;
+        const studentId = violation.student_id.toString(); // Ambil ID siswa sebelum dihapus
 
         await Violation.findByIdAndDelete(req.params.id);
 
@@ -188,7 +213,7 @@ router.delete('/:id', async (req, res) => {
             }
         }
 
-        res.status(200).json({ message: 'Riwayat berhasil dihapus' });
+        res.status(200).json({ message: 'Riwayat pelanggaran berhasil dihapus' });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

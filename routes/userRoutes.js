@@ -155,4 +155,27 @@ router.put('/change-password', async (req, res) => {
     }
 });
 
+// PUT: Update FCM token untuk pengguna yang sedang login
+router.put('/fcm-token', async (req, res) => {
+    try {
+        const { fcmToken } = req.body;
+        const userId = req.user.id || req.user._id;
+
+        if (!fcmToken) {
+            return res.status(400).json({ message: 'fcmToken tidak boleh kosong' });
+        }
+
+        // Cari dan perbarui user berdasarkan ID dari token
+        const updatedUser = await User.findByIdAndUpdate(userId, { fcmToken: fcmToken }, { returnDocument: 'after' });
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: 'User tidak ditemukan' });
+        }
+
+        res.status(200).json({ message: 'FCM token berhasil diperbarui' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 module.exports = router;
