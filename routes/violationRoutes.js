@@ -4,6 +4,7 @@ const Violation = require('../models/Violation');
 const ViolationRule = require('../models/ViolationRule');
 const Student = require('../models/Student');
 const User = require('../models/User');
+const User = require('../models/User');
 const authMiddleware = require('../models/authMiddleware');
 const mongoose = require('mongoose');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -52,9 +53,35 @@ router.get('/', async (req, res) => {
             query.student_id = { $in: targetIds };
         } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
             if (!classId) {
+
+        // Ambil data user terbaru langsung dari database
+        const dbUser = await User.findById(req.user.id || req.user._id);
+        const userRole = dbUser ? dbUser.role : req.user.role;
+        const studentId = dbUser ? dbUser.student_id : req.user.student_id;
+        const classId = dbUser ? dbUser.class_id : req.user.class_id;
+
+        if (userRole === 'orang_tua') {
+            if (!studentId) {
+                return res.status(200).json([]);
+            }
+
+            const isArray = Array.isArray(studentId);
+            const firstVal = isArray ? studentId[0] : studentId;
+            let targetIds = isArray ? studentId : [studentId];
+
+            if (firstVal && !mongoose.Types.ObjectId.isValid(firstVal)) {
+                const studentsData = await Student.find({ nis: { $in: targetIds } }).select('_id');
+                if (studentsData.length === 0) return res.status(200).json([]);
+                targetIds = studentsData.map(s => s._id);
+            }
+
+            query.student_id = { $in: targetIds };
+        } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
+            if (!classId) {
                 return res.status(200).json([]);
             }
             // Wali kelas dan sekretaris hanya melihat pelanggaran siswa dari kelasnya
+            const studentsInClass = await Student.find({ class_id: classId }).select('_id');
             const studentsInClass = await Student.find({ class_id: classId }).select('_id');
             query.student_id = { $in: studentsInClass.map(s => s._id) };
         }

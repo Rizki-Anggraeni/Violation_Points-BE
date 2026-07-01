@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const Student = require('../models/Student');
+const Student = require('../models/Student');
 const authMiddleware = require('../models/authMiddleware');
+const bcrypt = require('bcryptjs');
 const bcrypt = require('bcryptjs');
 
 router.use(authMiddleware);
