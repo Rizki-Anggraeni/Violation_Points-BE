@@ -4,7 +4,6 @@ const Violation = require('../models/Violation');
 const ViolationRule = require('../models/ViolationRule');
 const Student = require('../models/Student');
 const User = require('../models/User');
-const User = require('../models/User');
 const authMiddleware = require('../models/authMiddleware');
 const mongoose = require('mongoose');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -57,11 +56,6 @@ router.get('/', async (req, res) => {
             }
         }
 
-        // Ambil data user terbaru langsung dari database
-        const dbUser = await User.findById(req.user.id || req.user._id);
-        const userRole = dbUser ? dbUser.role : req.user.role;
-        const studentId = dbUser ? dbUser.student_id : req.user.student_id;
-        const classId = dbUser ? dbUser.class_id : req.user.class_id;
 
         if (userRole === 'orang_tua') {
             if (!studentId) {

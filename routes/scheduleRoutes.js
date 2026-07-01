@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Schedule = require('../models/Schedule');
+const User = require('../models/User');
+const Student = require('../models/Student');
 const authMiddleware = require('../models/authMiddleware');
 
 router.use(authMiddleware);
@@ -9,12 +11,27 @@ router.use(authMiddleware);
 router.get('/', async (req, res) => {
     try {
         let query = {};
+        const dbUser = await User.findById(req.user.id || req.user._id);
+        const userRole = dbUser ? dbUser.role : req.user.role;
+        const classId = dbUser ? dbUser.class_id : req.user.class_id;
+
         // Filter agar sekretaris dan wali kelas hanya mendapat jadwal kelasnya
-        if (req.user.role === 'sekretaris' || req.user.role === 'wali_kelas') {
-            if (!req.user.class_id) {
+        if (userRole === 'sekretaris' || userRole === 'wali_kelas') {
+            if (!classId) {
                 return res.status(200).json([]); // Jika belum di-assign kelas, kembalikan kosong
             }
-            query.class_id = req.user.class_id;
+            query.class_id = classId;
+        } else if (userRole === 'orang_tua') {
+            // Jika orang tua, cari kelas dari siswa pertama yang terhubung
+            const studentId = dbUser.student_id && dbUser.student_id.length > 0 ? dbUser.student_id[0] : null;
+            if (!studentId) {
+                return res.status(200).json([]);
+            }
+            const student = await Student.findById(studentId).select('class_id');
+            if (!student || !student.class_id) {
+                return res.status(200).json([]);
+            }
+            query.class_id = student.class_id;
         }
         const schedules = await Schedule.find(query).populate('class_id');
         res.status(200).json(schedules);
