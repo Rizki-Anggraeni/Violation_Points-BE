@@ -53,6 +53,9 @@ router.get('/', async (req, res) => {
             query.student_id = { $in: targetIds };
         } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
             if (!classId) {
+                return res.status(200).json([]);
+            }
+        }
 
         // Ambil data user terbaru langsung dari database
         const dbUser = await User.findById(req.user.id || req.user._id);
@@ -81,7 +84,6 @@ router.get('/', async (req, res) => {
                 return res.status(200).json([]);
             }
             // Wali kelas dan sekretaris hanya melihat pelanggaran siswa dari kelasnya
-            const studentsInClass = await Student.find({ class_id: classId }).select('_id');
             const studentsInClass = await Student.find({ class_id: classId }).select('_id');
             query.student_id = { $in: studentsInClass.map(s => s._id) };
         }

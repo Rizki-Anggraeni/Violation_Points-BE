@@ -21,7 +21,6 @@ const userSchema = new mongoose.Schema({
     ref: 'Class'
   }, // ID Kelas untuk user dengan role 'sekretaris'
   student_id: [{
-  student_id: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Student',
     default: []
