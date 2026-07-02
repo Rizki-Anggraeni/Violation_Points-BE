@@ -3,11 +3,12 @@ const router = express.Router();
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const Student = require('../models/Student'); // Impor model Student
 
 // POST: Register User Baru
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, role, student_id, class_id } = req.body;
+        const { username, password, role, student_nis, class_id } = req.body;
 
         // Cek apakah username sudah ada di database
         const existingUser = await User.findOne({ username });
@@ -15,13 +16,43 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ message: 'Username sudah digunakan' });
         }
 
-        // Format data yang akan disimpan
         const userData = { username, password, role };
-        if (class_id) userData.class_id = class_id;
-        if (student_id) {
-            // Jadikan array apabila input yang masuk berupa string tunggal
-            userData.student_id = Array.isArray(student_id) ? student_id : [student_id];
+
+        // --- ALUR VALIDASI NIS KHUSUS UNTUK ORANG TUA ---
+        if (role === 'orang_tua') {
+            // 1. Validasi input awal
+            if (!student_nis || !Array.isArray(student_nis) || student_nis.length === 0) {
+                return res.status(400).json({ message: 'Data NIS anak wajib diisi.' });
+            }
+
+            // Bersihkan dan filter NIS yang kosong
+            const validNisList = student_nis.map(n => n.trim()).filter(n => n !== '');
+            if (validNisList.length === 0) {
+                return res.status(400).json({ message: 'Data NIS anak wajib diisi.' });
+            }
+
+            // 2. Cari semua siswa berdasarkan array NIS menggunakan $in
+            const students = await Student.find({ nis: { $in: validNisList } });
+
+            // 3. Validasi Kuantitas: Pastikan semua NIS yang diinput ditemukan
+            if (students.length !== validNisList.length) {
+                const foundNis = students.map(s => s.nis);
+                const notFoundNis = validNisList.filter(nis => !foundNis.includes(nis));
+                return res.status(400).json({ message: `NIS berikut tidak terdaftar di sistem: ${notFoundNis.join(', ')}!` });
+            }
+
+            // 4. Validasi Duplikasi: Cek apakah ada siswa yang sudah terhubung dengan akun ortu lain
+            const studentIds = students.map(s => s._id);
+            const existingParent = await User.findOne({ role: 'orang_tua', student_id: { $in: studentIds } });
+            if (existingParent) {
+                return res.status(400).json({ message: 'Salah satu NIS sudah terdaftar di akun orang tua lain!' });
+            }
+
+            // 5. Jika lolos semua validasi, masukkan array ObjectId ke dalam userData
+            userData.student_id = studentIds;
         }
+
+        if (class_id) userData.class_id = class_id;
 
         const newUser = new User(userData);
         const savedUser = await newUser.save(); // Password otomatis dienkripsi oleh model User

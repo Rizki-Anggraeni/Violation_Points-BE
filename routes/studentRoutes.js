@@ -34,14 +34,7 @@ router.get('/', async (req, res) => {
                 return res.status(200).json([]);
             }
             
-            const isArray = Array.isArray(studentId);
-            const firstVal = isArray ? studentId[0] : studentId;
-            
-            if (firstVal && !mongoose.Types.ObjectId.isValid(firstVal)) {
-                query.nis = isArray ? { $in: studentId } : studentId;
-            } else {
-                query._id = isArray ? { $in: studentId } : studentId;
-            }
+            query._id = { $in: studentId };
         } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
             if (!classId) {
                 return res.status(200).json([]); // Cegah fetch data jika belum punya kelas

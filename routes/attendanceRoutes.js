@@ -23,17 +23,8 @@ router.get('/', async (req, res) => {
 
         if (userRole === 'orang_tua') {
             if (!studentId) return res.status(200).json([]);
-            
-            const isArray = Array.isArray(studentId);
-            const firstVal = isArray ? studentId[0] : studentId;
-            let targetIds = isArray ? studentId : [studentId];
-
-            if (firstVal && !mongoose.Types.ObjectId.isValid(firstVal)) {
-                const studentsData = await Student.find({ nis: { $in: targetIds } }).select('_id');
-                if (studentsData.length === 0) return res.status(200).json([]);
-                targetIds = studentsData.map(s => s._id);
-            }
-            query.student_id = { $in: targetIds };
+            // Logika disederhanakan: Langsung gunakan student_id yang berisi ObjectId
+            query.student_id = { $in: studentId };
         } else if (userRole === 'wali_kelas' || userRole === 'sekretaris') {
             if (!classId) {
                 return res.status(200).json([]);
